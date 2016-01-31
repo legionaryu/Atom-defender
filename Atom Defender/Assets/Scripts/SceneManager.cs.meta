@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: c51fc977d61fe384a903f84e5cddeaa0
+timeCreated: 1454246338
+licenseType: Free
+MonoImporter:
+  serializedVersion: 2
+  defaultReferences:
+  - turret1Base: {fileID: 141206, guid: 7c08dc290755ae641a16876fd3fcc77f, type: 2}
+  - turret2Base: {fileID: 199280, guid: 5be25428df1a9a543822b47c9e98b757, type: 2}
+  - creeper1Base: {instanceID: 0}
+  - creeper2Base: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
