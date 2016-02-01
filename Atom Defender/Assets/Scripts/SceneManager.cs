@@ -22,11 +22,19 @@ public class SceneManager : MonoBehaviour {
     public Text txtMoney;
     public Text txtWaveNo;
     public Text txtCountDown;
-    public float money = 200;
+    public Text txtLives;
     public float spawnCooldown = 0.1f;
+    public float waveCooldown = 10f;
     [SerializeField]
     public Wave[] waves;
 
+    private Wave currentWave = new Wave();
+    private int lives = 10;
+    private int waveCount = 0;
+    private int selectedTurretIndex = 1;
+    private float money = 200;
+    private float waveCooldownTimer = 0;
+    private float spawnCooldownTimer = 0;
     private bool gameStarted = false;
     private Material positionSelectorMaterial;
     private GraphUpdateScene positionSelectorGraph;
@@ -36,6 +44,7 @@ public class SceneManager : MonoBehaviour {
     private GraphNode creeperStartNode;
     private GraphNode creeperTargetNode;
     private HashSet<Creeper> allCreepers = new HashSet<Creeper>();
+    private HashSet<GameObject> allTurrets = new HashSet<GameObject>();
 
     public static SceneManager Instance { get; private set; }
 
@@ -59,6 +68,11 @@ public class SceneManager : MonoBehaviour {
 	
     void Update()
     {
+        if (txtMoney) txtMoney.text = "Money: $" + money.ToString("F0");
+        if (txtWaveNo) txtWaveNo.text = "Wave no. " + (waveCount + 1).ToString("D");
+        if (txtCountDown) txtCountDown.text = "Next wave in " + (waveCooldownTimer).ToString("F") + " secs";
+        if (txtLives) txtLives.text = "Lives: " + lives.ToString("D");
+
         if (gameStarted)
         {
             if (positionSelectorMaterial)
@@ -74,6 +88,49 @@ public class SceneManager : MonoBehaviour {
     {
         if (gameStarted)
         {
+            waveCooldownTimer -= Time.fixedDeltaTime;
+            if (waveCooldownTimer <= 0)
+            {
+                waveCooldownTimer = 0;
+                spawnCooldownTimer -= Time.fixedDeltaTime;
+                if (spawnCooldownTimer <= 0)
+                {
+                    if (currentWave.creeper1Count == 0)
+                        currentWave.creeper1Count = waves[waveCount].creeper1Count;
+                    if (currentWave.creeper2Count == 0)
+                        currentWave.creeper2Count = waves[waveCount].creeper2Count;
+
+                    if (currentWave.creeper1Count > 0)
+                    {
+                        var creeperObj = GameObject.Instantiate(creeper1Prefab) as GameObject;
+                        var p = creeperStartPosition;
+                        p.y = creeperObj.transform.position.y;
+                        creeperObj.transform.position = p;
+                        allCreepers.Add(creeperObj.GetComponent<Creeper>());
+                        currentWave.creeper1Count--;
+                    }
+                    if (currentWave.creeper2Count > 0)
+                    {
+                        var creeperObj = GameObject.Instantiate(creeper2Prefab) as GameObject;
+                        var p = creeperStartPosition;
+                        p.y = creeperObj.transform.position.y;
+                        creeperObj.transform.position = p;
+                        allCreepers.Add(creeperObj.GetComponent<Creeper>());
+                        currentWave.creeper2Count--;
+                    }
+                    if(currentWave.creeper1Count <= 0 && currentWave.creeper2Count <= 0)
+                    {
+                        if(waveCount == 4)
+                        {
+                            EndGame();
+                            return;
+                        }
+                        waveCount++;
+                        waveCooldownTimer = waveCooldown;
+                    }
+                    spawnCooldownTimer += spawnCooldown;
+                }
+            }
             if (positionSelector)
             {
                 var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
@@ -114,13 +171,24 @@ public class SceneManager : MonoBehaviour {
                             var c = positionSelectorInitialColor;
                             c.a = positionSelectorMaterial.color.a;
                             positionSelectorMaterial.color = c;
-
-                            if (Input.GetMouseButtonDown(0))
+                            var prefabObj = (selectedTurretIndex == 1 ? turret1Prefab : turret2Prefab);
+                            Turret selectedTurretPrefab;
+                            if(selectedTurretIndex == 1)
                             {
-                                var turret2 = GameObject.Instantiate(turret2Prefab) as GameObject;
+                                selectedTurretPrefab = prefabObj.GetComponent<Turret1>();
+                            }
+                            else
+                            {
+                                selectedTurretPrefab = prefabObj.GetComponent<Turret2>();
+                            }
+                            if (Input.GetMouseButtonDown(0) && money >= selectedTurretPrefab.cost)
+                            {
+                                money -= selectedTurretPrefab.cost;
+                                var turret = GameObject.Instantiate(prefabObj) as GameObject;
+                                allTurrets.Add(turret);
                                 var p = (Vector3)node.position;
-                                p.y = turret2.transform.position.y;
-                                turret2.transform.position = p;
+                                p.y = turret.transform.position.y;
+                                turret.transform.position = p;
                                 lastValidState = false;
                                 foreach (var creeper in allCreepers)
                                 {
@@ -142,10 +210,17 @@ public class SceneManager : MonoBehaviour {
 
     public void StartGame()
     {
+        lives = 10;
+        waveCount = 0;
+        money = 200;
         gameStarted = true;
-        if(btnStartGame)
+        waveCooldownTimer = 5;
+        spawnCooldownTimer = spawnCooldown;
+        currentWave.creeper1Count = 0;
+        currentWave.creeper2Count = 0;
+        if (btnStartGame)
         {
-            btnStartGame.enabled = false;
+            btnStartGame.gameObject.SetActive(false);
         }
     }
 
@@ -154,8 +229,26 @@ public class SceneManager : MonoBehaviour {
         gameStarted = false;
         if (btnStartGame)
         {
-            btnStartGame.enabled = true;
+            btnStartGame.gameObject.SetActive(true);
         }
+        foreach(var c in allCreepers)
+        {
+            GameObject.Destroy(c.gameObject);
+        }
+        foreach(var t in allTurrets)
+        {
+            GameObject.Destroy(t);
+        }
+    }
+
+    public void SelectTurret1()
+    {
+        selectedTurretIndex = 1;
+    }
+
+    public void SelectTurret2()
+    {
+        selectedTurretIndex = 2;
     }
 
     public void CreeperDied(Creeper creeper, float reward)
@@ -170,10 +263,15 @@ public class SceneManager : MonoBehaviour {
     public void CreeperArrived(Creeper creeper)
     {
         CreeperDied(creeper, 0);
-        var creeperObj = GameObject.Instantiate(creeper1Prefab) as GameObject;
-        var p = creeperStartPosition;
-        p.y = creeperObj.transform.position.y;
-        creeperObj.transform.position = p;
-        allCreepers.Add(creeperObj.GetComponent<Creeper>());
+        lives--;
+        if(lives <= 0)
+        {
+            EndGame();
+        }
+        //var creeperObj = GameObject.Instantiate(creeper1Prefab) as GameObject;
+        //var p = creeperStartPosition;
+        //p.y = creeperObj.transform.position.y;
+        //creeperObj.transform.position = p;
+        //allCreepers.Add(creeperObj.GetComponent<Creeper>());
     }
 }
