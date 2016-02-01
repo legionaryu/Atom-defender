@@ -11,6 +11,9 @@ public class Creeper : MonoBehaviour {
 	void Start () {
         pathFinder = GetComponent<Seeker>();
         pathFinder.StartPath(transform.position, SceneManager.Instance.creeperTargetPosition);
+        var waveMultiplier = 1 + (SceneManager.Instance.WaveCount / 5f);
+        life *= waveMultiplier;
+        GetComponent<AIPath>().speed *= waveMultiplier;
     }
 	
 	void FixedUpdate ()
@@ -24,7 +27,7 @@ public class Creeper : MonoBehaviour {
         {
             var path = (ABPath)pathFinder.GetCurrentPath();
             //Debug.Log(pathFinder.GetCurrentPath() == null);
-            if (path != null && Vector3.Distance(transform.position, path.endPoint) < 0.5)
+            if (path != null && Vector3.Distance(transform.position, SceneManager.Instance.creeperTargetPosition) < 0.5)
             {
                 SceneManager.Instance.CreeperArrived(this);
                 GameObject.Destroy(gameObject);

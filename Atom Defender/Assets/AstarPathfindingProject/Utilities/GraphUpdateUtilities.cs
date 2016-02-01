@@ -50,7 +50,6 @@ if (GraphUpdateUtilities.UpdateGraphsNoBlock (guo, spawnPointNode, goalNode, fal
 			List<GraphNode> buffer = ListPool<GraphNode>.Claim ();
 			buffer.Add (node1);
 			buffer.Add (node2);
-
 			bool worked = UpdateGraphsNoBlock (guo, buffer, alwaysRevert);
 			ListPool<GraphNode>.Release (buffer);
 			return worked;
@@ -87,11 +86,13 @@ if (GraphUpdateUtilities.UpdateGraphsNoBlock (guo, spawnPointNode, goalNode, fal
 				//Call thread safe callbacks, includes graph updates
 				AstarPath.active.FlushGraphUpdates();
 
+                //AstarDebugger.print("UpdateGraphsNoBlock before worked:" + worked);
 				//Check if all nodes are in the same area and that they are walkable, i.e that there are paths between all of them
 				worked = worked && PathUtilities.IsPathPossible (nodes);
+                //AstarDebugger.print("UpdateGraphsNoBlock after worked:" + worked);
 
-				//If it did not work, revert the GUO
-				if (!worked || alwaysRevert) {
+                //If it did not work, revert the GUO
+                if (!worked || alwaysRevert) {
 					guo.RevertFromBackup ();
 
 					//The revert operation does not revert ALL nodes' area values, so we must flood fill again

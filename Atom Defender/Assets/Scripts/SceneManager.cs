@@ -47,6 +47,7 @@ public class SceneManager : MonoBehaviour {
     private HashSet<GameObject> allTurrets = new HashSet<GameObject>();
 
     public static SceneManager Instance { get; private set; }
+    public int WaveCount { get { return waveCount; } }
 
     void Awake()
     {
@@ -62,8 +63,6 @@ public class SceneManager : MonoBehaviour {
             positionSelectorInitialColor = r.sharedMaterial.color;
             positionSelectorGraph =  positionSelector.GetComponent<GraphUpdateScene>();
         }
-        creeperStartNode = AstarPath.active.GetNearest(creeperStartPosition).node;
-        creeperTargetNode = AstarPath.active.GetNearest(creeperTargetPosition).node;
     }
 	
     void Update()
@@ -95,9 +94,9 @@ public class SceneManager : MonoBehaviour {
                 spawnCooldownTimer -= Time.fixedDeltaTime;
                 if (spawnCooldownTimer <= 0)
                 {
-                    if (currentWave.creeper1Count == 0)
+                    if (currentWave.creeper1Count < 0)
                         currentWave.creeper1Count = waves[waveCount].creeper1Count;
-                    if (currentWave.creeper2Count == 0)
+                    if (currentWave.creeper2Count < 0)
                         currentWave.creeper2Count = waves[waveCount].creeper2Count;
 
                     if (currentWave.creeper1Count > 0)
@@ -120,13 +119,21 @@ public class SceneManager : MonoBehaviour {
                     }
                     if(currentWave.creeper1Count <= 0 && currentWave.creeper2Count <= 0)
                     {
-                        if(waveCount == 4)
+                        if(waveCount >= 4)
                         {
-                            EndGame();
-                            return;
+                            if(allCreepers.Count <= 0)
+                            {
+                                EndGame();
+                                return;
+                            }
                         }
-                        waveCount++;
-                        waveCooldownTimer = waveCooldown;
+                        else
+                        {
+                            waveCount++;
+                            waveCooldownTimer = waveCooldown;
+                            currentWave.creeper1Count = -1;
+                            currentWave.creeper2Count = -1;
+                        }
                     }
                     spawnCooldownTimer += spawnCooldown;
                 }
@@ -152,19 +159,23 @@ public class SceneManager : MonoBehaviour {
                     {
                         if (lastValidNodePosition != node.position)
                         {
+                            creeperStartNode = AstarPath.active.GetNearest(creeperStartPosition).node;
+                            creeperTargetNode = AstarPath.active.GetNearest(creeperTargetPosition).node;
                             var guo = new GraphUpdateObject(positionSelectorGraph.GetBounds());
                             guo.modifyWalkability = positionSelectorGraph.modifyWalkability;
                             guo.setWalkability = positionSelectorGraph.setWalkability;
                             if (GraphUpdateUtilities.UpdateGraphsNoBlock(guo, creeperStartNode, creeperTargetNode, true))
                             {
+                                //Debug.Log("Permitido");
                                 lastValidState = true;
                             }
                             else
                             {
+                                //Debug.Log("Proibido");
                                 lastValidState = false;
                             }
-                            lastValidNodePosition = node.position;
                         }
+                        lastValidNodePosition = node.position;
 
                         if (lastValidState)
                         {
@@ -192,7 +203,7 @@ public class SceneManager : MonoBehaviour {
                                 lastValidState = false;
                                 foreach (var creeper in allCreepers)
                                 {
-                                    creeper.RecalculatePath();
+                                    if(creeper) creeper.RecalculatePath();
                                 }
                             }
                         }
@@ -216,12 +227,14 @@ public class SceneManager : MonoBehaviour {
         gameStarted = true;
         waveCooldownTimer = 5;
         spawnCooldownTimer = spawnCooldown;
-        currentWave.creeper1Count = 0;
-        currentWave.creeper2Count = 0;
+        currentWave.creeper1Count = -1;
+        currentWave.creeper2Count = -1;
         if (btnStartGame)
         {
             btnStartGame.gameObject.SetActive(false);
         }
+        AstarPath.active.Scan();
+        positionSelector.transform.position = Vector3.up * .5f;
     }
 
     void EndGame()
@@ -239,6 +252,7 @@ public class SceneManager : MonoBehaviour {
         {
             GameObject.Destroy(t);
         }
+        positionSelector.transform.position = Vector3.down * 5;
     }
 
     public void SelectTurret1()

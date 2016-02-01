@@ -35,7 +35,12 @@ namespace Pathfinding {
 			if (nodes.Count == 0) return true;
 
 			uint area = nodes[0].Area;
-			for (int i=0;i<nodes.Count;i++) if (!nodes[i].Walkable || nodes[i].Area != area) return false;
+
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                AstarDebugger.print("node"+i+".area:" + nodes[i].Area);
+                if (!nodes[i].Walkable || nodes[i].Area != area) return false;
+            }
 			return true;
 		}
 
